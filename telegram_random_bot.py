@@ -1,17 +1,19 @@
+import os
 import random
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Токен, полученный от BotFather
-TOKEN = "7515571427:AAFjwoiW5pzKamJiw_hqeZWbUqjhxIAIh1A"
+# Загружаем токен из переменной среды
+TOKEN = os.getenv("TOKEN")
+
+if not TOKEN:
+    raise ValueError("Токен не найден! Убедитесь, что переменная среды TOKEN установлена.")
 
 # Храним режимы и последние списки пользователей
 user_data = {}
 
-
 def pick_random(options):
     return random.choice(options)
-
 
 def pick_weighted(options):
     weighted_list = []
@@ -23,28 +25,24 @@ def pick_weighted(options):
             weighted_list.append(option)
     return random.choice(weighted_list) if weighted_list else None
 
-
 def pick_sequential(user_id):
     if user_id in user_data and user_data[user_id]['options']:
         return user_data[user_id]['options'].pop(0)
     return "Список пуст!"
 
-
 def get_funny_comment():
     comments = [
         "О да, это отличный выбор!",
         "Ну, держись!",
-        "Я всегда знал что у тебя хороший вкус!",
+        "Я всегда знал, что у тебя хороший вкус!",
         "Судьба решила за тебя!",
         "Я бы выбрал так же!"
     ]
     return random.choice(comments)
 
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Отправь мне список вариантов через запятую, и я выберу один из них!")
+    await update.message.reply_text("Привет! Отправь мне список вариантов через пробел, и я выберу один из них!")
     user_data[update.message.chat_id] = {'mode': 'random', 'options': []}
-
 
 async def set_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
@@ -57,7 +55,6 @@ async def set_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("Укажи режим после команды. Например: /mode random")
 
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.chat_id
     text = update.message.text.strip()
@@ -65,7 +62,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text.lower().startswith("/mode"):
         return
 
-    options = [opt.strip() for opt in text.split(',') if opt.strip()]
+    options = [opt.strip() for opt in text.split() if opt.strip()]
     user_data[user_id]['options'] = options
     mode = user_data[user_id]['mode']
 
@@ -79,11 +76,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     funny_comment = get_funny_comment()
     await update.message.reply_text(f"{choice} \n{funny_comment}")
 
-
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Отправь список вариантов через запятую.\nИспользуй /mode random|weighted|sequential для выбора режима.")
-
+        "Отправь список вариантов через пробел.\nИспользуй /mode random|weighted|sequential для выбора режима."
+    )
 
 app = Application.builder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
